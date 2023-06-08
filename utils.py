@@ -3,16 +3,14 @@ from typing import Dict, Generator, List
 
 from PIL import Image
 from pytesseract import image_to_data
+from streamlit import cache_data
 
 
-def extract_text(image_bytes: str, confidence: float) -> List[str]:
+@cache_data
+def extract_text_from_image(image_bytes: str) -> Dict[str, str]:
     image_object = Image.open(BytesIO(image_bytes))
     result = image_to_data(image_object)
-    results = list(format_ocr_result_as_dictionary(ocr_result=result))
-    confident_results = list(
-        filter_results_below_confidence(results=results, confidence=confidence)
-    )
-    return group_text_by_block_number(results=confident_results)
+    return list(format_ocr_result_as_dictionary(ocr_result=result))
 
 
 def filter_results_below_confidence(

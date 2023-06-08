@@ -9,7 +9,11 @@ from streamlit import (
     write,
 )
 
-from utils import extract_text
+from utils import (
+    extract_text_from_image,
+    filter_results_below_confidence,
+    group_text_by_block_number,
+)
 
 set_page_config(
     page_title="Digitise Form", page_icon="📝", initial_sidebar_state="expanded"
@@ -26,7 +30,11 @@ with form(key="ocr"):
         if uploaded_file is None:
             error("Please upload an image")
         else:
-            texts = extract_text(image_bytes=bytes_data, confidence=confidence)
-            for text in texts:
+            results = extract_text_from_image(image_bytes=bytes_data)
+            for text in group_text_by_block_number(
+                results=filter_results_below_confidence(
+                    results=results, confidence=confidence
+                )
+            ):
                 for section in text.split("\t"):
                     write(section)
