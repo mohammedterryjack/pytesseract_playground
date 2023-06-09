@@ -25,8 +25,7 @@ def display_text(image_data: ndarray, name: str) -> None:
             )
             grouped_text = group_text_by_block_number(results=confident_results)
             for text in grouped_text:
-                for section in text.split("\t"):
-                    write(section)
+                write(text)
 
 
 def binarise(image_data: ndarray) -> ndarray:
@@ -60,9 +59,10 @@ def filter_results_below_confidence(
             yield result
 
 
-def group_text_by_block_number(results: List[Dict[str, str]]) -> List[str]:
+def group_text_by_block_number(
+    results: List[Dict[str, str]], delimiter: str = " "
+) -> List[str]:
     sections = {}
-    pointer = {}
     for result in results:
         if "text" not in result:
             continue
@@ -70,13 +70,10 @@ def group_text_by_block_number(results: List[Dict[str, str]]) -> List[str]:
         if not text:
             continue
         n = result["block_num"]
-        position = int(result["left"]) + int(result["width"])
-        delimiter = "\t" if position - pointer.get(n, 0) >= 100 else " "
         if n in sections:
             sections[n] += delimiter + text
         else:
             sections[n] = text
-        pointer[n] = position
     return list(sections.values())
 
 
