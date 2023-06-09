@@ -1,7 +1,14 @@
 from io import BytesIO
 from typing import Dict, Generator, List
 
-from cv2 import COLOR_BGR2GRAY, THRESH_BINARY_INV, THRESH_OTSU, cvtColor, threshold
+from cv2 import (
+    COLOR_BGR2GRAY,
+    THRESH_BINARY_INV,
+    THRESH_OTSU,
+    bitwise_not,
+    cvtColor,
+    threshold,
+)
 from numpy import array, ndarray
 from PIL import Image
 from pytesseract import image_to_data
@@ -24,7 +31,7 @@ def display_text(image_data: ndarray, name: str) -> None:
 
 def binarise(image_data: ndarray) -> ndarray:
     _, image_threshold = threshold(image_data, 0, 255, THRESH_BINARY_INV | THRESH_OTSU)
-    return image_threshold
+    return bitwise_not(image_threshold)
 
 
 def grayscale(image_data: ndarray) -> ndarray:
