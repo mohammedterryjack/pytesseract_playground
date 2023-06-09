@@ -1,9 +1,12 @@
+from pytesseract import get_tesseract_version
 from streamlit import file_uploader, image, set_page_config, tabs
 
 from utils import binarise, display_text, grayscale, open_image
 
 set_page_config(
-    page_title="Digitise Form", page_icon="📝", initial_sidebar_state="expanded"
+    page_title=f"Tesseract {get_tesseract_version()}",
+    page_icon="📝",
+    initial_sidebar_state="expanded",
 )
 image_display_size = 300
 uploaded_file = file_uploader("Choose an image")
