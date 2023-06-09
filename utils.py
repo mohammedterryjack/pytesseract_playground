@@ -1,15 +1,45 @@
 from io import BytesIO
 from typing import Dict, Generator, List
 
+from cv2 import COLOR_BGR2GRAY, THRESH_BINARY_INV, THRESH_OTSU, cvtColor, threshold
+from numpy import array, ndarray
 from PIL import Image
 from pytesseract import image_to_data
-from streamlit import cache_data
+from streamlit import cache_data, form, form_submit_button, slider, write
+
+
+def display_text(image_data: ndarray, name: str) -> None:
+    with form(key=name):
+        confidence = slider("Minimum Confidence", 0, 100)
+        if form_submit_button("Extract Text"):
+            results = extract_text_from_image(image_data=image_data)
+            confident_results = filter_results_below_confidence(
+                results=results, confidence=confidence
+            )
+            grouped_text = group_text_by_block_number(results=confident_results)
+            for text in grouped_text:
+                for section in text.split("\t"):
+                    write(section)
+
+
+def binarise(image_data: ndarray) -> ndarray:
+    _, image_threshold = threshold(image_data, 0, 255, THRESH_BINARY_INV | THRESH_OTSU)
+    return image_threshold
+
+
+def grayscale(image_data: ndarray) -> ndarray:
+    return cvtColor(image_data, COLOR_BGR2GRAY)
+
+
+def open_image(image_bytes: str) -> ndarray:
+    image_data = BytesIO(image_bytes)
+    image_object = Image.open(image_data)
+    return array(image_object)
 
 
 @cache_data
-def extract_text_from_image(image_bytes: str) -> Dict[str, str]:
-    image_object = Image.open(BytesIO(image_bytes))
-    result = image_to_data(image_object)
+def extract_text_from_image(image_data: ndarray) -> Dict[str, str]:
+    result = image_to_data(image_data)
     return list(format_ocr_result_as_dictionary(ocr_result=result))
 
 
