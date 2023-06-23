@@ -158,9 +158,11 @@ def l2_distance(coordinates1: Tuple[int, int], coordinates2: Tuple[int, int]) ->
 def draw_bounding_boxes(
     image: ndarray,
     binarised_image: ndarray,
+    grayscale_image: ndarray,
     noise_threshold: int = 100,
     checkbox_threshold: int = 10,
     rectangle_ratio: int = 10,
+    colour_threshold: float = 100,
 ) -> Tuple[ndarray, List[Tuple[int, int]], List[Tuple[int, int]]]:
     bbox_image = image.copy()
     image_blurred = blur_image(image_data=binarised_image)
@@ -171,6 +173,9 @@ def draw_bounding_boxes(
     for contour in contours:
         x, y, w, h = boundingRect(contour)
         if w * h < noise_threshold:
+            continue
+        average_colour = grayscale_image[x : x + w, y : y + h].mean(axis=0).mean(axis=0)
+        if average_colour > colour_threshold:
             continue
         if abs(w - h) <= checkbox_threshold:
             rectangle(bbox_image, (x, y), (x + w, y + h), (255, 0, 0), 3)

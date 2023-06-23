@@ -16,8 +16,9 @@ set_page_config(
 )
 image_display_size = 300
 uploaded_file = file_uploader("Choose an image")
-distance = sidebar.slider("Min Distance from Field", 0, 100, 80)
 show_boxes = sidebar.checkbox("Show Fields")
+distance = sidebar.slider("Min Distance from Field", 0, 100, 80)
+colour_threshold = sidebar.slider("Field Colour threshold", 0, 255, 100)
 original_tab, grayscale_tab, binary_tab = tabs(["Original", "Grayscale", "Binary"])
 if uploaded_file is not None:
     bytes_data = uploaded_file.getvalue()
@@ -27,7 +28,10 @@ if uploaded_file is not None:
     binary_data_inverted = invert(binary_data)
     with original_tab:
         bytes_data_bboxes, coordinates_fields, coordinates_boxes = draw_bounding_boxes(
-            image=image_data, binarised_image=binary_data
+            image=image_data,
+            binarised_image=binary_data,
+            grayscale_image=gray_data,
+            colour_threshold=colour_threshold,
         )
         image(
             bytes_data_bboxes if show_boxes else bytes_data,
@@ -42,7 +46,10 @@ if uploaded_file is not None:
         )
     with grayscale_tab:
         gray_data_bboxes, coordinates_fields, coordinates_boxes = draw_bounding_boxes(
-            image=gray_data, binarised_image=binary_data
+            image=gray_data,
+            binarised_image=binary_data,
+            grayscale_image=gray_data,
+            colour_threshold=colour_threshold,
         )
         image(gray_data_bboxes if show_boxes else gray_data, width=image_display_size)
         display_text(
@@ -56,7 +63,12 @@ if uploaded_file is not None:
             binary_data_inverted_bboxes,
             coordinates_fields,
             coordinates_boxes,
-        ) = draw_bounding_boxes(image=binary_data_inverted, binarised_image=binary_data)
+        ) = draw_bounding_boxes(
+            image=binary_data_inverted,
+            binarised_image=binary_data,
+            grayscale_image=gray_data,
+            colour_threshold=colour_threshold,
+        )
         image(
             binary_data_inverted_bboxes if show_boxes else binary_data_inverted,
             width=image_display_size,
