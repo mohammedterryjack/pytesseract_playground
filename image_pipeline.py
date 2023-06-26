@@ -80,8 +80,8 @@ class ImagePipeline:
         binary_image: ndarray, min_area: int
     ) -> Generator[Tuple[int, int, int, int], None, None]:
         _, _, statistics, _ = connectedComponentsWithStats(binary_image, 4, CV_32S)
-        for stats in statistics:
-            if stats[CC_STAT_AREA] > min_area:
+        for i,stats in enumerate(statistics):
+            if i and stats[CC_STAT_AREA] > min_area:
                 yield (
                     stats[CC_STAT_LEFT],
                     stats[CC_STAT_TOP],
