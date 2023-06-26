@@ -1,23 +1,6 @@
 from io import BytesIO
 from typing import Dict, Generator, List, Tuple
 
-from cv2 import (
-    CHAIN_APPROX_SIMPLE,
-    COLOR_BGR2GRAY,
-    MORPH_DILATE,
-    MORPH_RECT,
-    RETR_TREE,
-    THRESH_BINARY_INV,
-    THRESH_OTSU,
-    bitwise_not,
-    boundingRect,
-    cvtColor,
-    findContours,
-    getStructuringElement,
-    morphologyEx,
-    rectangle,
-    threshold,
-)
 from numpy import array, ndarray
 from PIL import Image
 from pytesseract import image_to_data
@@ -45,20 +28,6 @@ def display_text(
             grouped_text = group_text_by_block_number(results=confident_results)
             for text in grouped_text:
                 write(text)
-
-
-def binarise(image_data: ndarray) -> ndarray:
-    _, image_threshold = threshold(image_data, 0, 255, THRESH_BINARY_INV | THRESH_OTSU)
-    return image_threshold
-
-
-def invert(image_data: ndarray) -> ndarray:
-    return bitwise_not(image_data)
-
-
-def grayscale(image_data: ndarray) -> ndarray:
-    return cvtColor(image_data, COLOR_BGR2GRAY)
-
 
 def open_image(image_bytes: str) -> ndarray:
     image_data = BytesIO(image_bytes)
@@ -114,12 +83,6 @@ def format_ocr_result_as_dictionary(
         yield dict(key_value_pairs)
 
 
-def blur_image(image_data: ndarray) -> ndarray:
-    return morphologyEx(
-        image_data, MORPH_DILATE, getStructuringElement(MORPH_RECT, (3, 3))
-    )
-
-
 def annotate_field_text(
     results: List[Dict[str, str]],
     coordinates_of_fields: List[Tuple[int, int]],
@@ -153,34 +116,3 @@ def l2_distance(coordinates1: Tuple[int, int], coordinates2: Tuple[int, int]) ->
     x2, y2 = coordinates2
     return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
 
-
-@cache_data
-def draw_bounding_boxes(
-    image: ndarray,
-    binarised_image: ndarray,
-    grayscale_image: ndarray,
-    noise_threshold: int = 100,
-    checkbox_threshold: int = 10,
-    rectangle_ratio: int = 10,
-    colour_threshold: float = 100,
-) -> Tuple[ndarray, List[Tuple[int, int]], List[Tuple[int, int]]]:
-    bbox_image = image.copy()
-    image_blurred = blur_image(image_data=binarised_image)
-    contours, _ = findContours(image_blurred, RETR_TREE, CHAIN_APPROX_SIMPLE)
-
-    field_coordinates, checkbox_coordinates = [], []
-
-    for contour in contours:
-        x, y, w, h = boundingRect(contour)
-        if w * h < noise_threshold:
-            continue
-        average_colour = grayscale_image[x : x + w, y : y + h].mean(axis=0).mean(axis=0)
-        if average_colour > colour_threshold:
-            continue
-        if abs(w - h) <= checkbox_threshold:
-            rectangle(bbox_image, (x, y), (x + w, y + h), (255, 0, 0), 3)
-            checkbox_coordinates.append((x, y))
-        elif w > h and w / h < rectangle_ratio:
-            rectangle(bbox_image, (x, y), (x + w, y + h), (255, 0, 255), 3)
-            field_coordinates.append((x, y))
-    return bbox_image, field_coordinates, checkbox_coordinates
