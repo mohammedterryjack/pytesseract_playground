@@ -1,4 +1,4 @@
+scikit-learn
 pytesseract
 opencv-python-headless
 numpy
-scikit-learn
