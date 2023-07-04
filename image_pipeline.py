@@ -1,4 +1,4 @@
-from typing import Generator, List, Tuple
+from typing import Dict, Generator, List, Tuple
 
 from cv2 import (
     CC_STAT_AREA,
@@ -31,7 +31,7 @@ class ImagePipeline:
 
     def __call__(
         self, colour_image: ndarray
-    ) -> Tuple[ndarray, ndarray, ndarray, ndarray, ndarray]:
+    ) -> Tuple[ndarray, ndarray, ndarray, ndarray, ndarray, List[Dict[str, int]]]:
         image_colour = self.rgb_image(colour_image=colour_image)
         image_simplified = self.repaint_image(colour_image=image_colour)
         image_gray = self.grayscale_image(colour_image=image_simplified)
@@ -44,7 +44,14 @@ class ImagePipeline:
             self.bounding_boxes(binary_image=image_binary, min_area=self.min_area)
         )
         image_annotated = self.annotate_boxes(colour_image=colour_image, boxes=bboxes)
-        return image_colour, image_simplified, image_gray, image_binary, image_annotated
+        return (
+            image_colour,
+            image_simplified,
+            image_gray,
+            image_binary,
+            image_annotated,
+            bboxes,
+        )
 
     def repaint_image(self, colour_image: ndarray) -> ndarray:
         width, height, colour_channels = colour_image.shape
@@ -78,24 +85,32 @@ class ImagePipeline:
     @staticmethod
     def bounding_boxes(
         binary_image: ndarray, min_area: int
-    ) -> Generator[Tuple[int, int, int, int], None, None]:
+    ) -> Generator[Dict[str, int], None, None]:
         _, _, statistics, _ = connectedComponentsWithStats(binary_image, 4, CV_32S)
-        for i,stats in enumerate(statistics):
+        for i, stats in enumerate(statistics):
             if i and stats[CC_STAT_AREA] > min_area:
-                yield (
-                    stats[CC_STAT_LEFT],
-                    stats[CC_STAT_TOP],
-                    stats[CC_STAT_WIDTH],
-                    stats[CC_STAT_HEIGHT],
-                )
+                yield {
+                    "left": stats[CC_STAT_LEFT],
+                    "top": stats[CC_STAT_TOP],
+                    "width": stats[CC_STAT_WIDTH],
+                    "height": stats[CC_STAT_HEIGHT],
+                    "right": stats[CC_STAT_LEFT] + stats[CC_STAT_WIDTH],
+                    "bottom": stats[CC_STAT_TOP] + stats[CC_STAT_HEIGHT],
+                }
 
     @staticmethod
     def annotate_boxes(
         colour_image: ndarray,
-        boxes: List[Tuple[int, int, int, int]],
+        boxes: List[Dict[str, int]],
         box_colour: Tuple[int, int, int] = (255, 0, 255),
     ) -> ndarray:
         annotated_image = colour_image.copy()
-        for x, y, w, h in boxes:
-            rectangle(annotated_image, (x, y), (x + w, y + h), box_colour, 3)
+        for box in boxes:
+            rectangle(
+                annotated_image,
+                (box["left"], box["top"]),
+                (box["right"], box["bottom"]),
+                box_colour,
+                3,
+            )
         return annotated_image
