@@ -25,12 +25,9 @@ uploaded_file = file_uploader("Choose an image")
 min_area = sidebar.slider("Minimum Area", 0, 100, 30)
 k_colours = sidebar.slider("Colour Buckets", 2, 5, 2)
 character_pixels = sidebar.slider("Character Pixel Resolution", 30, 50, 40)
-field_distance = sidebar.slider("Radius from field", 0, 300, 150)
+field_distance = sidebar.slider("Radius from field", 0, 300, 200)
 
 image_pipeline = ImagePipeline(n_colours=k_colours, min_area=min_area)
-text_pipeline = TextExtractionPipeline(
-    optimal_character_height_in_pixels=character_pixels
-)
 
 original_tab, clustered_tab, gray_tab, binary_tab, box_tab, preprocess_tab = tabs(
     [
@@ -53,9 +50,10 @@ if uploaded_file is not None:
         image_bbox,
         bboxes,
     ) = image_pipeline(colour_image=image_data)
-    image_data_preprocessed = text_pipeline.preprocess_image(
-        image_data=image_data, bboxes=bboxes
+    text_pipeline = TextExtractionPipeline(
+        optimal_character_height_in_pixels=character_pixels, field_boxes=bboxes
     )
+    image_data_preprocessed = text_pipeline.preprocess_image(image_data=image_data)
 
     with original_tab:
         image(
@@ -97,7 +95,7 @@ if uploaded_file is not None:
             )
             fields = list(
                 text_pipeline.extract_field_labels(
-                    text_data=texts, field_boxes=bboxes, min_distance=field_distance
+                    text_data=texts, min_distance=field_distance
                 )
             )
             field_names = st_tags(

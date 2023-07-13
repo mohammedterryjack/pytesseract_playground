@@ -7,22 +7,52 @@ from pytesseract import Output, image_to_data
 
 
 class TextExtractionPipeline:
-    def __init__(self, optimal_character_height_in_pixels: int = 36) -> None:
+    def __init__(
+        self,
+        field_boxes: List[Dict[str, int]],
+        optimal_character_height_in_pixels: int = 36,
+    ) -> None:
         self._optimal_character_height_pixels = optimal_character_height_in_pixels
+        self.bboxes = field_boxes
+        self.ratio = self.aspect_ratio(
+            character_height=mode(map(lambda bbox: bbox["height"], self.bboxes)),
+            optimal_character_height=self._optimal_character_height_pixels,
+        )
 
-    def preprocess_image(
-        self, image_data: ndarray, bboxes: List[Dict[str, int]]
-    ) -> ndarray:
-        image_data = TextExtractionPipeline.sharpen_image(image_data=image_data)
-        image_data = TextExtractionPipeline.grayscale_image(colour_image=image_data)
-        image_data = TextExtractionPipeline.resize_image(
+    def preprocess_image(self, image_data: ndarray) -> ndarray:
+        image_data = self.sharpen_image(image_data=image_data)
+        image_data = self.grayscale_image(colour_image=image_data)
+        image_data = self.resize_image(
             image=image_data,
-            ratio=TextExtractionPipeline.aspect_ratio(
-                character_height=mode(map(lambda bbox: bbox["height"], bboxes)),
-                optimal_character_height=self._optimal_character_height_pixels,
-            ),
+            ratio=self.ratio,
         )
         return image_data
+
+    def extract_field_labels(
+        self,
+        text_data: List[Dict[str, Union[str, int]]],
+        min_distance: int,
+    ) -> Generator[Dict[str, Union[str, int]], None, None]:
+        taken_boxes = set()
+        for text in text_data:
+            if not any(text["text"].strip()):
+                continue
+            coordinates_text = (text["right"], text["bottom"])
+            nearest_distance = None
+            nearest_box_index = None
+            for i, box in enumerate(self.bboxes):
+                if i in taken_boxes:
+                    continue
+                coordinates_field = (box["left"] * self.ratio, box["top"] * self.ratio)
+                distance = TextExtractionPipeline.l2_distance(
+                    coordinates1=coordinates_field, coordinates2=coordinates_text
+                )
+                if nearest_distance is None or distance < nearest_distance:
+                    nearest_distance = distance
+                    nearest_box_index = i
+            if nearest_distance <= min_distance:
+                yield text
+                taken_boxes.add(nearest_box_index)
 
     @staticmethod
     def resize_image(image: ndarray, ratio: float) -> ndarray:
@@ -53,33 +83,6 @@ class TextExtractionPipeline:
         return TextExtractionPipeline.group_text_by_block_number(
             results=confident_results
         )
-
-    @staticmethod
-    def extract_field_labels(
-        text_data: List[Dict[str, Union[str, int]]],
-        field_boxes: List[Dict[str, int]],
-        min_distance: int,
-    ) -> Generator[Dict[str, Union[str, int]], None, None]:
-        taken_boxes = set()
-        for text in text_data:
-            if not any(text["text"].strip()):
-                continue
-            coordinates_text = (text["right"], text["bottom"])
-            nearest_distance = None
-            nearest_box_index = None
-            for i, box in enumerate(field_boxes):
-                if i in taken_boxes:
-                    continue
-                coordinates_field = (box["left"], box["top"])
-                distance = TextExtractionPipeline.l2_distance(
-                    coordinates1=coordinates_field, coordinates2=coordinates_text
-                )
-                if nearest_distance is None or distance < nearest_distance:
-                    nearest_distance = distance
-                    nearest_box_index = i
-            if nearest_distance <= min_distance:
-                yield text
-                taken_boxes.add(nearest_box_index)
 
     @staticmethod
     def filter_results_below_confidence(
